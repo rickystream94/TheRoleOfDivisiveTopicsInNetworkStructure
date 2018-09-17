@@ -12,7 +12,7 @@ import datetime
 import json
 import tweepy
 
-# Set global variables
+# Set global variables and settings
 script_dir = os.path.dirname(os.path.realpath(__file__))
 output_filename = "tweets.json"
 log_filename = "log.txt"
@@ -26,6 +26,7 @@ logging.basicConfig(
         logging.FileHandler(os.path.join(script_dir,log_filename),mode="w")
     ]
 )
+logging.getLogger('requests').setLevel(logging.ERROR) # Hides tweepy informational output
 
 def iterchunks(stuff, chunksize):
     i = 0
@@ -61,7 +62,7 @@ def smartquery(term, before, after, n_tweets=30):
 
         # If any hits, iterate through them and get full tweets from api
         hits = got.manager.TweetManager.getTweets(tweetCriteria)[:tweets_to_go]
-        logging.info("  Found {0} tweets in period, {1} in total.".format(len(hits), n_hits))
+        logging.info("  Found {0} tweets in period, {1} in total.\n".format(len(hits), n_hits))
         for tweetchunk in iterchunks(hits, chunksize=100):
             tweetIDs = [int(t.id) for t in tweetchunk]
             tweets = api.statuses_lookup(tweetIDs)
@@ -86,31 +87,14 @@ def smartquery(term, before, after, n_tweets=30):
 
 # Function used to clean the tweets prior to saving them to disk (save disk space and remove unneeded fields)
 def tweet_cleaner(tweet):
-    with open(os.path.join(script_dir,"twitter_object_dictionaries.json")) as twitter_dictionaries_file:
-        twitter_dicts = json.load(twitter_dictionaries_file)
-
-    # For each Twitter API object, get the list of relevant attributes to keep
-    tweet_attrs = twitter_dicts["tweet"]
-    user_attrs = twitter_dicts["user"]
-    entities_attrs = twitter_dicts["entities"]
-    user_mention_attrs = twitter_dicts["user_mention"]
-
     # Transform object to dict
     tweet = tweet._json
 
-    # Clean Tweet object
+    # Clean tweet
     cleaned_tweet = {attr:tweet[attr] for attr in tweet_attrs if attr in tweet}
-
-    # Clean User object
     cleaned_tweet["user"] = {attr:tweet["user"][attr] for attr in user_attrs if attr in tweet["user"]}
-
-    # Clean Entities object
     cleaned_tweet["entities"] = {attr:tweet["entities"][attr] for attr in entities_attrs if attr in tweet["entities"]}
-
-    # Clean Hashtag object
     cleaned_tweet["entities"]["hashtags"] = [hashtag["text"] for hashtag in tweet["entities"]["hashtags"] if "text" in hashtag]
-
-    # Clean User Mention object
     cleaned_tweet["entities"]["user_mentions"] = [{attr:user_mention[attr] for attr in user_mention if attr in user_mention_attrs} for user_mention in tweet["entities"]["user_mentions"]]
 
     return cleaned_tweet
@@ -145,13 +129,20 @@ if __name__ == '__main__':
     auth.secure = True
     api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
+    # For each Twitter API object, get the list of relevant attributes to keep
+    with open(os.path.join(script_dir,"twitter_object_dictionaries.json")) as twitter_dictionaries_file:
+        twitter_dicts = json.load(twitter_dictionaries_file)
+    tweet_attrs = twitter_dicts["tweet"]
+    user_attrs = twitter_dicts["user"]
+    entities_attrs = twitter_dicts["entities"]
+    user_mention_attrs = twitter_dicts["user_mention"]
+
     # Start main program
-    logging.info("=== Looking for maximum {0} tweets matching <{1}>. ===".format(N_TWEETS, TERM))
+    logging.info("=== Looking for maximum {0} tweets matching <{1}>. ===\n".format(N_TWEETS, TERM))
     n_hits = 0
     with open(os.path.join(script_dir, output_filename), "w") as f:
         for tweet in smartquery(term=TERM, before=LATEST, after=EARLIEST, n_tweets=N_TWEETS):
             line = json.dumps(tweet)
             f.write(line+"\n")
             n_hits += 1
-
-    logging.info("Done - found {0} tweets.\nSaved tweets in {1}".format(n_hits, output_filename))
+    logging.info("Done - found {0} tweets.\nSaved tweets in {1}".format(n_hits, os.path.abspath(os.path.join(script_dir, output_filename))))
