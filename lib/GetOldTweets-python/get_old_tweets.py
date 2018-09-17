@@ -1,5 +1,6 @@
 from __future__ import print_function
 import sys
+import os
 import argparse
 if sys.version_info[0] < 3:
     import got
@@ -17,7 +18,6 @@ def iterchunks(stuff, chunksize):
         i += chunksize
 
 def smartquery(term, before, after, n_tweets=30):
-
     n_hits = 0
 
     # Earliest allowed datetime
@@ -51,6 +51,7 @@ def smartquery(term, before, after, n_tweets=30):
             tweets = api.statuses_lookup(tweetIDs)
             for tweet in tweets:
                 n_hits += 1
+                tweet = tweet_cleaner(tweet)
                 yield tweet
 
         # New time interval to look into
@@ -67,14 +68,42 @@ def smartquery(term, before, after, n_tweets=30):
 
     return
 
-# TODO
+# Function used to clean the tweets prior to saving them to disk (save disk space and remove unneeded fields)
 def tweet_cleaner(tweet):
-    return tweet
+    with open(os.path.join(script_dir,"twitter_object_dictionaries.json")) as twitter_dictionaries_file:
+        twitter_dicts = json.load(twitter_dictionaries_file)
+
+    # For each Twitter API object, get the list of relevant attributes to keep
+    tweet_attrs = twitter_dicts["tweet"]
+    user_attrs = twitter_dicts["user"]
+    entities_attrs = twitter_dicts["entities"]
+    user_mention_attrs = twitter_dicts["user_mention"]
+
+    # Transform object to dict
+    tweet = tweet._json
+
+    # Clean Tweet object
+    cleaned_tweet = {attr:tweet[attr] for attr in tweet_attrs if attr in tweet}
+
+    # Clean User object
+    cleaned_tweet["user"] = {attr:tweet["user"][attr] for attr in user_attrs if attr in tweet["user"]}
+
+    # Clean Entities object
+    cleaned_tweet["entities"] = {attr:tweet["entities"][attr] for attr in entities_attrs if attr in tweet["entities"]}
+
+    # Clean Hashtag object
+    cleaned_tweet["entities"]["hashtags"] = [hashtag["text"] for hashtag in tweet["entities"]["hashtags"] if "text" in hashtag]
+
+    # Clean User Mention object
+    cleaned_tweet["entities"]["user_mentions"] = [{attr:user_mention[attr] for attr in user_mention if attr in user_mention_attrs} for user_mention in tweet["entities"]["user_mentions"]]
+
+    return cleaned_tweet
 
 if __name__ == '__main__':
     print("Launching %s with %d arguments: %s" %(sys.argv[0], len(sys.argv)-1, str(sys.argv[1:])))
 
     # Set additional global variables
+    script_dir = os.path.dirname(os.path.realpath(__file__))
     output_filename = "tweets.json"
     date_format = "%Y-%m-%d"
     time_window = datetime.timedelta(days=7)
@@ -99,7 +128,7 @@ if __name__ == '__main__':
     print("Latest date: %s" % LATEST)
 
     # Setup tweepy API
-    with open("twitter_credentials.json") as credentials_file:
+    with open(os.path.join(script_dir,"twitter_credentials.json")) as credentials_file:
         credentials = json.load(credentials_file)
 
     auth = tweepy.AppAuthHandler(credentials["consumer_key"], credentials["consumer_secret"])
@@ -109,9 +138,9 @@ if __name__ == '__main__':
     # Start main program
     print("=== Looking for maximum %d tweets matching <%s>. ===" % (N_TWEETS, TERM))
     n_hits = 0
-    with open(output_filename, "w") as f:
+    with open(os.path.join(script_dir, output_filename), "w") as f:
         for tweet in smartquery(term=TERM, before=LATEST, after=EARLIEST, n_tweets=N_TWEETS):
-            line = json.dumps(tweet._json)
+            line = json.dumps(tweet)
             f.write(line+"\n")
             n_hits += 1
 
