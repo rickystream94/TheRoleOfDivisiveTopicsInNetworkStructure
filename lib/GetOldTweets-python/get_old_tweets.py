@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys
 import os
+import logging
 import argparse
 if sys.version_info[0] < 3:
     import got
@@ -10,6 +11,21 @@ else:
 import datetime
 import json
 import tweepy
+
+# Set global variables
+script_dir = os.path.dirname(os.path.realpath(__file__))
+output_filename = "tweets.json"
+log_filename = "log.txt"
+date_format = "%Y-%m-%d"
+time_window = datetime.timedelta(days=7)
+logging.basicConfig(
+    format='%(asctime)s  %(message)s',
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(os.path.join(script_dir,log_filename),mode="w")
+    ]
+)
 
 def iterchunks(stuff, chunksize):
     i = 0
@@ -37,15 +53,15 @@ def smartquery(term, before, after, n_tweets=30):
         bstring = b.strftime(date_format)
         tweets_to_go = n_tweets - n_hits
         if tweets_to_go <= 0:
-            print("Reached max number of tweets.")
+            logging.info("Reached max number of tweets.")
             return
 
-        print("Searching between %s and %s for maximum %d tweets." % (astring, bstring, tweets_to_go))
+        logging.info("Searching between {0} and {1} for maximum {2} tweets.".format(astring, bstring, tweets_to_go))
         tweetCriteria = got.manager.TweetCriteria().setQuerySearch(term).setSince(astring).setUntil(bstring).setMaxTweets(tweets_to_go)
 
         # If any hits, iterate through them and get full tweets from api
         hits = got.manager.TweetManager.getTweets(tweetCriteria)[:tweets_to_go]
-        print("  Found %d tweets in period, %d in total." % (len(hits), n_hits))
+        logging.info("  Found {0} tweets in period, {1} in total.".format(len(hits), n_hits))
         for tweetchunk in iterchunks(hits, chunksize=100):
             tweetIDs = [int(t.id) for t in tweetchunk]
             tweets = api.statuses_lookup(tweetIDs)
@@ -62,7 +78,7 @@ def smartquery(term, before, after, n_tweets=30):
             a -= time_window + one_day
         if b - (time_window + one_day) <= a:
             keep_looking = False
-            print("Reached end of timeframe.")
+            logging.info("Reached end of timeframe.")
         else:
             b -= time_window + one_day
 
@@ -100,13 +116,7 @@ def tweet_cleaner(tweet):
     return cleaned_tweet
 
 if __name__ == '__main__':
-    print("Launching %s with %d arguments: %s" %(sys.argv[0], len(sys.argv)-1, str(sys.argv[1:])))
-
-    # Set additional global variables
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    output_filename = "tweets.json"
-    date_format = "%Y-%m-%d"
-    time_window = datetime.timedelta(days=7)
+    logging.info("Launching {0} with {1} arguments: {2}".format(sys.argv[0], len(sys.argv)-1, str(sys.argv[1:])))
 
     # Parsing command line arguments
     parser = argparse.ArgumentParser()
@@ -122,10 +132,10 @@ if __name__ == '__main__':
         LATEST = datetime.datetime.now().strftime(date_format)
     TERM = args.term
     N_TWEETS = args.maxTweets
-    print("Term to query for: %s" % TERM)
-    print("Max number of tweets: %d" % N_TWEETS)
-    print("Earliest date: %s" % EARLIEST)
-    print("Latest date: %s" % LATEST)
+    logging.info("Term to query for: {0}".format(TERM))
+    logging.info("Max number of tweets: {0}".format(N_TWEETS))
+    logging.info("Earliest date: {0}".format(EARLIEST))
+    logging.info("Latest date: {0}".format(LATEST))
 
     # Setup tweepy API
     with open(os.path.join(script_dir,"twitter_credentials.json")) as credentials_file:
@@ -136,7 +146,7 @@ if __name__ == '__main__':
     api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     # Start main program
-    print("=== Looking for maximum %d tweets matching <%s>. ===" % (N_TWEETS, TERM))
+    logging.info("=== Looking for maximum {0} tweets matching <{1}>. ===".format(N_TWEETS, TERM))
     n_hits = 0
     with open(os.path.join(script_dir, output_filename), "w") as f:
         for tweet in smartquery(term=TERM, before=LATEST, after=EARLIEST, n_tweets=N_TWEETS):
@@ -144,4 +154,4 @@ if __name__ == '__main__':
             f.write(line+"\n")
             n_hits += 1
 
-    print("Done - found %d tweets.\nSaved tweets in %s" %(n_hits, output_filename))
+    logging.info("Done - found {0} tweets.\nSaved tweets in {1}".format(n_hits, output_filename))
