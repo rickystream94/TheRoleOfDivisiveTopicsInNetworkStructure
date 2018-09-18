@@ -14,7 +14,8 @@ import tweepy
 
 # Set global variables and settings
 script_dir = os.path.dirname(os.path.realpath(__file__))
-output_filename = "tweets.json"
+output_filename_format = "tweets_{0}_{1}_{2}.json"
+output_folder_name = "out"
 log_filename = "log.txt"
 date_format = "%Y-%m-%d"
 time_window = datetime.timedelta(days=7)
@@ -62,7 +63,7 @@ def smartquery(term, before, after, n_tweets=30):
 
         # If any hits, iterate through them and get full tweets from api
         hits = got.manager.TweetManager.getTweets(tweetCriteria)[:tweets_to_go]
-        logging.info("  Found {0} tweets in period, {1} in total.\n".format(len(hits), n_hits))
+        logging.info("Found {0} tweets in period, {1} in total.\n".format(len(hits), n_hits))
         for tweetchunk in iterchunks(hits, chunksize=100):
             tweetIDs = [int(t.id) for t in tweetchunk]
             tweets = api.statuses_lookup(tweetIDs)
@@ -77,7 +78,7 @@ def smartquery(term, before, after, n_tweets=30):
             a = earliest_dt
         else:
             a -= time_window + one_day
-        if b - (time_window + one_day) <= a:
+        if b - (time_window + one_day) < a:
             keep_looking = False
             logging.info("Reached end of timeframe.")
         else:
@@ -116,10 +117,19 @@ if __name__ == '__main__':
         LATEST = datetime.datetime.now().strftime(date_format)
     TERM = args.term
     N_TWEETS = args.maxTweets
-    logging.info("Term to query for: {0}".format(TERM))
-    logging.info("Max number of tweets: {0}".format(N_TWEETS))
-    logging.info("Earliest date: {0}".format(EARLIEST))
-    logging.info("Latest date: {0}".format(LATEST))
+    tab_format = "{0: <30}: {1}"
+    logging.info(tab_format.format("Term to query for",TERM))
+    logging.info(tab_format.format("Max number of tweets", N_TWEETS))
+    logging.info(tab_format.format("Earliest date", EARLIEST))
+    logging.info(tab_format.format("Latest date", LATEST))
+
+    # Set dynamic output folder and filename
+    output_folder_path = os.path.join(script_dir, output_folder_name)
+    if not os.path.exists(output_folder_path):
+        os.makedirs(output_folder_path)
+    output_filename = output_filename_format.format(TERM,EARLIEST,LATEST)
+    output_filepath = os.path.abspath(os.path.join(output_folder_path, output_filename))
+    logging.info("Tweets will be saved in {0}.".format(output_filepath))
 
     # Setup tweepy API
     with open(os.path.join(script_dir,"twitter_credentials.json")) as credentials_file:
@@ -140,9 +150,9 @@ if __name__ == '__main__':
     # Start main program
     logging.info("=== Looking for maximum {0} tweets matching <{1}>. ===\n".format(N_TWEETS, TERM))
     n_hits = 0
-    with open(os.path.join(script_dir, output_filename), "w") as f:
+    with open(output_filepath, "w") as f:
         for tweet in smartquery(term=TERM, before=LATEST, after=EARLIEST, n_tweets=N_TWEETS):
             line = json.dumps(tweet)
             f.write(line+"\n")
             n_hits += 1
-    logging.info("Done - found {0} tweets.\nSaved tweets in {1}".format(n_hits, os.path.abspath(os.path.join(script_dir, output_filename))))
+    logging.info("Done - found {0} tweets.\nSaved tweets in {1}".format(n_hits, output_filepath))
