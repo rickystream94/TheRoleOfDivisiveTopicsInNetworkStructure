@@ -8,3 +8,8 @@
 **/log.txt
 **/out/
 **/.ipynb_checkpoints/
+**/import.report
+**/mmr.db
+**/graph.db
+**/*.csv
+**/neo4j
