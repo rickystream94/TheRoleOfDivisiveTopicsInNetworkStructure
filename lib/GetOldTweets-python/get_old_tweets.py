@@ -24,7 +24,7 @@ logging.basicConfig(
     level=logging.INFO,
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler(os.path.join(script_dir,log_filename),mode="w")
+        logging.FileHandler(os.path.join(script_dir,log_filename),mode="a")
     ]
 )
 logging.getLogger('requests').setLevel(logging.ERROR) # Hides tweepy informational output
