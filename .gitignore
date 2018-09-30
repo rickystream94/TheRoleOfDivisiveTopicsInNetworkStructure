@@ -13,3 +13,4 @@
 **/graph.db
 **/*.csv
 **/neo4j
+**/data
