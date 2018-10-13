@@ -11,6 +11,7 @@ else:
 import datetime
 import json
 import tweepy
+import re
 
 # Set global variables and settings
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -97,6 +98,9 @@ def tweet_cleaner(tweet):
     cleaned_tweet["entities"] = {attr:tweet["entities"][attr] for attr in entities_attrs if attr in tweet["entities"]}
     cleaned_tweet["entities"]["hashtags"] = [hashtag["text"] for hashtag in tweet["entities"]["hashtags"] if "text" in hashtag]
     cleaned_tweet["entities"]["user_mentions"] = [{attr:user_mention[attr] for attr in user_mention if attr in user_mention_attrs} for user_mention in tweet["entities"]["user_mentions"]]
+
+    # Strip URLs from the tweet text
+    cleaned_tweet["text"] = re.sub(r'https?://t\.co/[\w\d]+', '', tweet["text"]).strip()
 
     return cleaned_tweet
 
