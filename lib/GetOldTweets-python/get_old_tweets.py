@@ -74,7 +74,7 @@ def smartquery(term, before, after, n_tweets=30):
                     tweet = tweet_cleaner(tweet)
                     yield tweet
         except Exception as ex:
-            logging.exception("An error occurred: {0}".format(ex))
+            logging.info("ERROR: {0}".format(ex))
 
         # New time interval to look into
         one_day = datetime.timedelta(days=1)
