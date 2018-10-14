@@ -100,7 +100,7 @@ def tweet_cleaner(tweet):
     cleaned_tweet["entities"]["user_mentions"] = [{attr:user_mention[attr] for attr in user_mention if attr in user_mention_attrs} for user_mention in tweet["entities"]["user_mentions"]]
 
     # Strip URLs from the tweet text
-    cleaned_tweet["text"] = re.sub(r'https?://t\.co/[\w\d]+', '', tweet["text"]).strip()
+    cleaned_tweet["text"] = re.sub(r'https?://\S+', '', tweet["text"]).strip()
 
     return cleaned_tweet
 
