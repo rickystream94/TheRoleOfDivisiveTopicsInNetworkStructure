@@ -131,13 +131,15 @@ class TweetManager:
 			jsonResponse = response.read()
 		except urllib.error.HTTPError as ex:
 			print("HTTP Error: {0}".format(ex.reason))
-			sys.exit()
-			return
+			#sys.exit()
+			#return
+			raise
 		except Exception:
 			print("Twitter weird response. Try to see on browser: https://twitter.com/search?q=%s&src=typd" % urllib.parse.quote(urlGetData))
 			print("Unexpected error:", sys.exc_info()[0])
-			sys.exit()
-			return
+			#sys.exit()
+			#return
+			raise
 		
 		dataJson = json.loads(jsonResponse.decode())
 		

@@ -62,16 +62,19 @@ def smartquery(term, before, after, n_tweets=30):
         logging.info("Searching between {0} and {1} for maximum {2} tweets.".format(astring, bstring, tweets_to_go))
         tweetCriteria = got.manager.TweetCriteria().setQuerySearch(term).setSince(astring).setUntil(bstring).setMaxTweets(tweets_to_go)
 
-        # If any hits, iterate through them and get full tweets from api
-        hits = got.manager.TweetManager.getTweets(tweetCriteria)[:tweets_to_go]
-        logging.info("Found {0} tweets in period, {1} in total.\n".format(len(hits), n_hits))
-        for tweetchunk in iterchunks(hits, chunksize=100):
-            tweetIDs = [int(t.id) for t in tweetchunk]
-            tweets = api.statuses_lookup(tweetIDs)
-            for tweet in tweets:
-                n_hits += 1
-                tweet = tweet_cleaner(tweet)
-                yield tweet
+        try:
+            # If any hits, iterate through them and get full tweets from api
+            hits = got.manager.TweetManager.getTweets(tweetCriteria)[:tweets_to_go]
+            logging.info("Found {0} tweets in period, {1} in total.\n".format(len(hits), n_hits))
+            for tweetchunk in iterchunks(hits, chunksize=100):
+                tweetIDs = [int(t.id) for t in tweetchunk]
+                tweets = api.statuses_lookup(tweetIDs)
+                for tweet in tweets:
+                    n_hits += 1
+                    tweet = tweet_cleaner(tweet)
+                    yield tweet
+        except Exception as ex:
+            logging.exception("An error occurred: {0}".format(ex))
 
         # New time interval to look into
         one_day = datetime.timedelta(days=1)
@@ -92,8 +95,12 @@ def tweet_cleaner(tweet):
     # Transform object to dict
     tweet = tweet._json
 
-    # Clean tweet
+    # Clean tweet (and recursively clean all existing Tweet objects referenced by the Tweet)
     cleaned_tweet = {attr:tweet[attr] for attr in tweet_attrs if attr in tweet}
+    if "retweeted_status" in tweet:
+        cleaned_tweet["retweeted_status"] = tweet_cleaner(tweet["retweeted_status"])
+    if "quoted_status" in tweet:
+        cleaned_tweet["quoted_status"] = tweet_cleaner(tweet["quoted_status"])
     cleaned_tweet["user"] = {attr:tweet["user"][attr] for attr in user_attrs if attr in tweet["user"]}
     cleaned_tweet["entities"] = {attr:tweet["entities"][attr] for attr in entities_attrs if attr in tweet["entities"]}
     cleaned_tweet["entities"]["hashtags"] = [hashtag["text"] for hashtag in tweet["entities"]["hashtags"] if "text" in hashtag]
