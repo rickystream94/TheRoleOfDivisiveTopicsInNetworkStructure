@@ -93,7 +93,8 @@ def smartquery(term, before, after, n_tweets=30):
 # Function used to clean the tweets prior to saving them to disk (save disk space and remove unneeded fields)
 def tweet_cleaner(tweet):
     # Transform object to dict
-    tweet = tweet._json
+    if not isinstance(tweet, dict):
+        tweet = tweet._json
 
     # Clean tweet (and recursively clean all existing Tweet objects referenced by the Tweet)
     cleaned_tweet = {attr:tweet[attr] for attr in tweet_attrs if attr in tweet}
