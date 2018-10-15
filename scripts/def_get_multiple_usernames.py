@@ -1,5 +1,6 @@
 def get_multiple_usernames(ids):
-    arg = ";".join(["/," + str(el) + "$/p" for el in ids])
+    # Convert ID to line number by adding 1
+    arg = ";".join([str(el + 1) + "p" for el in ids])
 
     #Invoke shell script that finds the occurrences
     p = subprocess.Popen(['../scripts/get_usernames.sh', arg], stdout=subprocess.PIPE)
