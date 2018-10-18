@@ -12,6 +12,7 @@ import datetime
 import json
 import tweepy
 import re
+import time
 
 # Set global variables and settings
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -73,20 +74,21 @@ def smartquery(term, before, after, n_tweets=30):
                     n_hits += 1
                     tweet = tweet_cleaner(tweet)
                     yield tweet
+                    
+            # New time interval to look into
+            one_day = datetime.timedelta(days=1)
+            if a - (time_window + one_day) < earliest_dt:
+                a = earliest_dt
+            else:
+                a -= time_window + one_day
+            if b - (time_window + one_day) < a:
+                keep_looking = False
+                logging.info("Reached end of timeframe.")
+            else:
+                b -= time_window + one_day
         except Exception as ex:
-            logging.info("ERROR: {0}".format(ex))
-
-        # New time interval to look into
-        one_day = datetime.timedelta(days=1)
-        if a - (time_window + one_day) < earliest_dt:
-            a = earliest_dt
-        else:
-            a -= time_window + one_day
-        if b - (time_window + one_day) < a:
-            keep_looking = False
-            logging.info("Reached end of timeframe.")
-        else:
-            b -= time_window + one_day
+                logging.info("ERROR: {0}. Sleeping for 300 seconds before trying again...".format(ex))
+                time.sleep(300)
 
     return
 
