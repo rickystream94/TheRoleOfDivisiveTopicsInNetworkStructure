@@ -23,8 +23,8 @@ def read_large_file(file_object, start_from_line):
             chunk = []
 
 def get_verified_accounts(start_from_line=0):
-    usernames_filename = "../data/usernames.csv"
-    output_filename = "../data/verified_users.csv"
+    companies_filename = "../../data/found_companies.csv"
+    output_filename = "../../data/potential_companies.csv"
     
     # Setup tweepy API
     with open("../lib/GetOldTweets-python/twitter_credentials.json") as credentials_file:
@@ -34,11 +34,11 @@ def get_verified_accounts(start_from_line=0):
     auth.secure = True
     api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
     
-    with open(usernames_filename) as usernames_f:
+    with open(companies_filename) as companies_f:
         with open(output_filename, "a") as out_f:
             count = start_from_line
             print("Starting from line {0}".format(start_from_line))
-            for chunk in read_large_file(usernames_f, start_from_line):
+            for chunk in read_large_file(companies_f, start_from_line):
                 success = False
                 while not success: 
                     try:
