@@ -4,5 +4,5 @@
 while IFS= read -r h
 do
     echo "=== LOOKING FOR $h ==="
-    egrep "^$h," -i -m 1 "$2" | tee -a ../../data/found_companies.csv
+    egrep "^$h," -i -m 1 "$2" | tee -a ../../data/data_cleanup/found_companies.csv
 done < "$1"

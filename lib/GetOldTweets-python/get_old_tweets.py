@@ -20,7 +20,6 @@ output_filename_format = "tweets_{0}_{1}_{2}.json"
 output_folder_name = "out"
 log_filename = "log.txt"
 date_format = "%Y-%m-%d"
-time_window = datetime.timedelta(days=7)
 logging.basicConfig(
     format='%(asctime)s  %(message)s',
     level=logging.INFO,
@@ -45,10 +44,10 @@ def smartquery(term, before, after, n_tweets=30):
 
     # Setting interval to look within
     b = datetime.datetime.strptime(before, date_format)
-    if b - time_window < earliest_dt:
+    if b - TIME_WINDOW < earliest_dt:
         a = earliest_dt
     else:
-        a = b - time_window
+        a = b - TIME_WINDOW
 
     keep_looking = True
     while keep_looking:
@@ -77,15 +76,15 @@ def smartquery(term, before, after, n_tweets=30):
                     
             # New time interval to look into
             one_day = datetime.timedelta(days=1)
-            if a - (time_window + one_day) < earliest_dt:
+            if a - (TIME_WINDOW + one_day) < earliest_dt:
                 a = earliest_dt
             else:
-                a -= time_window + one_day
-            if b - (time_window + one_day) < a:
+                a -= TIME_WINDOW + one_day
+            if b - (TIME_WINDOW + one_day) < a:
                 keep_looking = False
                 logging.info("Reached end of timeframe.")
             else:
-                b -= time_window + one_day
+                b -= TIME_WINDOW + one_day
         except Exception as ex:
                 logging.info("ERROR: {0}. Sleeping for 300 seconds before trying again...".format(ex))
                 time.sleep(300)
@@ -123,12 +122,17 @@ if __name__ == '__main__':
     parser.add_argument("maxTweets", help="Maximum number of tweets to download", type=int)
     parser.add_argument("startDate", help="The earliest date to look into for matching tweets (in yyyy-mm-dd format)")
     parser.add_argument("-endDate", help="The latest date to look into for matching tweets (in yyyy-mm-dd format). Default is today")
+    parser.add_argument("-timeWindow", help="The whole period from startDate to endDate will be split in time windows of 'timeWindow' days. Default is 7 days.")
     args = parser.parse_args()
     EARLIEST = datetime.datetime.strptime(args.startDate, date_format).strftime(date_format) # Validate date format
     if args.endDate != None:
         LATEST = datetime.datetime.strptime(args.endDate, date_format).strftime(date_format) # Validate date format
     else:
         LATEST = datetime.datetime.now().strftime(date_format)
+    if args.timeWindow != None:
+        TIME_WINDOW = datetime.timedelta(days=int(args.timeWindow))
+    else:
+        TIME_WINDOW = datetime.timedelta(days=7)
     TERM = args.term
     N_TWEETS = args.maxTweets
     tab_format = "{0: <30}: {1}"
@@ -136,6 +140,7 @@ if __name__ == '__main__':
     logging.info(tab_format.format("Max number of tweets", N_TWEETS))
     logging.info(tab_format.format("Earliest date", EARLIEST))
     logging.info(tab_format.format("Latest date", LATEST))
+    logging.info(tab_format.format("Time window (days)", TIME_WINDOW))
 
     # Set dynamic output folder and filename
     output_folder_path = os.path.join(script_dir, output_folder_name)
@@ -164,7 +169,7 @@ if __name__ == '__main__':
     # Start main program
     logging.info("=== Looking for maximum {0} tweets matching <{1}>. ===\n".format(N_TWEETS, TERM))
     n_hits = 0
-    with open(output_filepath, "w") as f:
+    with open(output_filepath, "a") as f:
         for tweet in smartquery(term=TERM, before=LATEST, after=EARLIEST, n_tweets=N_TWEETS):
             line = json.dumps(tweet)
             f.write(line+"\n")
