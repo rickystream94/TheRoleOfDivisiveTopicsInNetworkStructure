@@ -3,16 +3,13 @@ import sys
 import os
 import logging
 import argparse
-if sys.version_info[0] < 3:
-    import got
-else:
-    import got3 as got
-
+import got3 as got
 import datetime
 import json
 import tweepy
 import re
 import time
+from urllib.error import HTTPError
 
 # Set global variables and settings
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -85,9 +82,12 @@ def smartquery(term, before, after, n_tweets=30):
                 logging.info("Reached end of timeframe.")
             else:
                 b -= TIME_WINDOW + one_day
+        except HTTPError as ex:
+            logging.info("HTTP ERROR: {0}. Sleeping for 300 seconds before trying again...".format(ex))
+            time.sleep(300)
         except Exception as ex:
-                logging.info("ERROR: {0}. Sleeping for 300 seconds before trying again...".format(ex))
-                time.sleep(300)
+            logging.info("UNEXPECTED EXCEPTION: {0}. Shutting down.".format(ex))
+            sys.exit(1)
 
     return
 
