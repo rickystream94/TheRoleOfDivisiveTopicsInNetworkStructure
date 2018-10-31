@@ -3,9 +3,9 @@
 # Variables
 SCRIPT_NAME="get_old_tweets.py"
 MAX_TWEETS=10000000
-FROM="2013-09-01"
-TO=$2
-TIME_WINDOW=$3
+FROM=$2
+TO=$3
+TIME_WINDOW=$4
 
 while IFS= read -r h
 do
