@@ -1,4 +1,5 @@
-import json, re, datetime, sys, http.cookiejar
+# I commented out all the unneeded code to speed up the process as much as possible
+import json, re, datetime, sys, random, http.cookiejar
 import urllib.request, urllib.parse, urllib.error
 from urllib.error import HTTPError
 from pyquery import PyQuery
@@ -9,20 +10,34 @@ class TweetManager:
 	def __init__(self):
 		pass
 
+	user_agents = [
+		'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:63.0) Gecko/20100101 Firefox/63.0',
+		'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:62.0) Gecko/20100101 Firefox/62.0',
+		'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:61.0) Gecko/20100101 Firefox/61.0',
+		'Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0',
+		'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36',
+		'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36',
+		'Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko',
+		'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0 Safari/605.1.15',
+	]
+
 	@staticmethod
-	def getTweets(tweetCriteria, receiveBuffer=None, bufferLength=100, proxy=None):
+	def getTweets(tweetCriteria, receiveBuffer=None, bufferLength=100, proxy=None, debug=False):
 		"""Get tweets that match the tweetCriteria parameter
 		A static method.
+
 		Parameters
 		----------
 		tweetCriteria : tweetCriteria, an object that specifies a match criteria
-		receiveBuffer : callable, a function that will be called upon a getting next `bufferLength' tweets
-		bufferLength: int, the number of tweets to pass to `receiveBuffer' function
+		receiveBuffer : callable, a function that will be called upon a getting next `bufferLength` tweets
+		bufferLength: int, the number of tweets to pass to `receiveBuffer` function
 		proxy: str, a proxy server to use
+		debug: bool, output debug information
 		"""
 		results = []
 		resultsAux = []
 		cookieJar = http.cookiejar.CookieJar()
+		user_agent = random.choice(TweetManager.user_agents)
 
 		all_usernames = []
 		usernames_per_batch = 20
@@ -47,7 +62,7 @@ class TweetManager:
 
 			active = True
 			while active:
-				json = TweetManager.getJsonReponse(tweetCriteria, refreshCursor, cookieJar, proxy)
+				json = TweetManager.getJsonReponse(tweetCriteria, refreshCursor, cookieJar, proxy, user_agent, debug=debug)
 				if len(json['items_html'].strip()) == 0:
 					break
 
@@ -64,6 +79,7 @@ class TweetManager:
 					tweetPQ = PyQuery(tweetHTML)
 					tweet = models.Tweet()
 
+					'''
 					usernames = tweetPQ("span.username.u-dir b").text().split()
 					tweet.username = usernames[0]
 					tweet.to = usernames[1] if len(usernames) == 2 else None
@@ -71,7 +87,9 @@ class TweetManager:
 						.replace('# ', '#').replace('@ ', '@').replace('$ ', '$')
 					tweet.retweets = int(tweetPQ("span.ProfileTweet-action--retweet span.ProfileTweet-actionCount").attr("data-tweet-stat-count").replace(",", ""))
 					tweet.favorites = int(tweetPQ("span.ProfileTweet-action--favorite span.ProfileTweet-actionCount").attr("data-tweet-stat-count").replace(",", ""))
+					'''
 					tweet.id = tweetPQ.attr("data-tweet-id")
+					'''
 					tweet.permalink = 'https://twitter.com' + tweetPQ.attr("data-permalink-path")
 					tweet.author_id = int(tweetPQ("a.js-user-profile-link").attr("data-user-id"))
 
@@ -83,19 +101,8 @@ class TweetManager:
 					tweet.hashtags = " ".join(re.compile('(#\\w*)').findall(tweet.text))
 
 					geoSpan = tweetPQ('span.Tweet-geo')
-					if len(geoSpan) > 0:
-						tweet.geo = geoSpan.attr('title')
-					else:
-						tweet.geo = ''
-
-					urls = []
-					for link in tweetPQ("a"):
-						try:
-							urls.append((link.attrib["data-expanded-url"]))
-						except KeyError:
-							pass
-
-					tweet.urls = ",".join(urls)
+					tweet.geo = tweet.geo = geoSpan.attr('title') if len(geoSpan) > 0 else ''
+					'''
 
 					results.append(tweet)
 					resultsAux.append(tweet)
@@ -116,11 +123,13 @@ class TweetManager:
 		return results
 
 	@staticmethod
-	def getJsonReponse(tweetCriteria, refreshCursor, cookieJar, proxy):
+	def getJsonReponse(tweetCriteria, refreshCursor, cookieJar, proxy, useragent=None, debug=False):
 		"""Invoke an HTTP query to Twitter.
 		Should not be used as an API function. A static method.
 		"""
-		url = "https://twitter.com/i/search/timeline?f=tweets&q=%s&src=typd&%smax_position=%s"
+		url = ("https://twitter.com/i/search/timeline?f=tweets&vertical=news&q=%s&src=typd&%s"
+			   "&include_available_features=1&include_entities=1&max_position=%s"
+			   "&reset_error_state=false")
 
 		urlGetData = ''
 		if hasattr(tweetCriteria, 'username'):
@@ -148,12 +157,13 @@ class TweetManager:
 		else:
 			urlLang = ''
 		url = url % (urllib.parse.quote(urlGetData.strip()), urlLang, urllib.parse.quote(refreshCursor))
+		useragent = useragent or TweetManager.user_agents[0]
 
 		headers = [
 			('Host', "twitter.com"),
-			('User-Agent', "Mozilla/5.0 (Windows NT 6.1; Win64; x64)"),
+			('User-Agent', useragent),
 			('Accept', "application/json, text/javascript, */*; q=0.01"),
-			('Accept-Language', "de,en-US;q=0.7,en;q=0.3"),
+			('Accept-Language', "en-US,en;q=0.5"),
 			('X-Requested-With', "XMLHttpRequest"),
 			('Referer', url),
 			('Connection', "keep-alive")
@@ -165,6 +175,9 @@ class TweetManager:
 			opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookieJar))
 		opener.addheaders = headers
 
+		if debug:
+			print(url)
+			print('\n'.join(h[0]+': '+h[1] for h in headers))
 		try:
 			response = opener.open(url)
 			jsonResponse = response.read()
@@ -176,6 +189,16 @@ class TweetManager:
 			print("Unexpected error:", sys.exc_info()[0])
 			raise
 
-		dataJson = json.loads(jsonResponse.decode())
+		s_json = jsonResponse.decode()
+
+		try:
+			dataJson = json.loads(s_json)
+		except:
+			print("Error parsing JSON: %s" % s_json)
+			sys.exit()
+
+		if debug:
+			print(s_json)
+			print("---\n")
 
 		return dataJson
