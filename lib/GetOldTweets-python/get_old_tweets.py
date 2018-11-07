@@ -90,6 +90,12 @@ def smartquery(term, before, after, n_tweets=30):
 
     return
 
+def remove_urls_from_text(text):
+    patterns = [r'pic\.twitter\.com/\S*', r'https?://\S*']
+    for p in patterns:
+        text = re.sub(p, "", text).strip()
+    return text
+
 # Function used to clean the tweets prior to saving them to disk (save disk space and remove unneeded fields)
 def tweet_cleaner(tweet):
     # Transform object to dict
@@ -108,8 +114,11 @@ def tweet_cleaner(tweet):
     cleaned_tweet["entities"]["user_mentions"] = [{attr:user_mention[attr] for attr in user_mention if attr in user_mention_attrs} for user_mention in tweet["entities"]["user_mentions"]]
 
     # Strip URLs from the tweet text
-    cleaned_tweet["text"] = re.sub(r'https?://\S*', '', tweet["text"]).strip()
-    cleaned_tweet["text"] = re.sub(r'pic\.twitter\.com/\S*', '', cleaned_tweet["text"]).strip()
+    cleaned_tweet["text"] = remove_urls_from_text(tweet["text"])
+    if "quoted_status" in cleaned_tweet:
+        cleaned_tweet["quoted_status"]["text"] = remove_urls_from_text(tweet["quoted_status"]["text"])
+    if "retweeted_status" in cleaned_tweet:
+        cleaned_tweet["retweeted_status"]["text"] = remove_urls_from_text(tweet["retweeted_status"]["text"])
     return cleaned_tweet
 
 if __name__ == '__main__':
