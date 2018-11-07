@@ -72,16 +72,15 @@ def smartquery(term, before, after, n_tweets=30):
                     yield tweet
                     
             # New time interval to look into
-            one_day = datetime.timedelta(days=1)
-            if a - (TIME_WINDOW + one_day) < earliest_dt:
+            if a - TIME_WINDOW < earliest_dt:
                 a = earliest_dt
             else:
-                a -= TIME_WINDOW + one_day
-            if b - (TIME_WINDOW + one_day) < a:
+                a -= TIME_WINDOW
+            if b - TIME_WINDOW < a:
                 keep_looking = False
                 logging.info("Reached end of timeframe.")
             else:
-                b -= TIME_WINDOW + one_day
+                b -= TIME_WINDOW
         except HTTPError as ex:
             logging.info("HTTP ERROR: {0}. Sleeping for 300 seconds before trying again...".format(ex))
             time.sleep(300)
