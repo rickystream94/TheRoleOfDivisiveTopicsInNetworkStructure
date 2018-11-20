@@ -72,16 +72,15 @@ def smartquery(term, before, after, n_tweets=30):
                     yield tweet
                     
             # New time interval to look into
-            one_day = datetime.timedelta(days=1)
-            if a - (TIME_WINDOW + one_day) < earliest_dt:
+            if a - TIME_WINDOW < earliest_dt:
                 a = earliest_dt
             else:
-                a -= TIME_WINDOW + one_day
-            if b - (TIME_WINDOW + one_day) < a:
+                a -= TIME_WINDOW
+            if b - TIME_WINDOW < a:
                 keep_looking = False
                 logging.info("Reached end of timeframe.")
             else:
-                b -= TIME_WINDOW + one_day
+                b -= TIME_WINDOW
         except HTTPError as ex:
             logging.info("HTTP ERROR: {0}. Sleeping for 300 seconds before trying again...".format(ex))
             time.sleep(300)
@@ -90,6 +89,12 @@ def smartquery(term, before, after, n_tweets=30):
             sys.exit(1)
 
     return
+
+def remove_urls_from_text(text):
+    patterns = [r'pic\.twitter\.com/\S*', r'https?://\S*']
+    for p in patterns:
+        text = re.sub(p, "", text).strip()
+    return text
 
 # Function used to clean the tweets prior to saving them to disk (save disk space and remove unneeded fields)
 def tweet_cleaner(tweet):
@@ -109,8 +114,11 @@ def tweet_cleaner(tweet):
     cleaned_tweet["entities"]["user_mentions"] = [{attr:user_mention[attr] for attr in user_mention if attr in user_mention_attrs} for user_mention in tweet["entities"]["user_mentions"]]
 
     # Strip URLs from the tweet text
-    cleaned_tweet["text"] = re.sub(r'https?://\S*', '', tweet["text"]).strip()
-    cleaned_tweet["text"] = re.sub(r'pic\.twitter\.com/\S*', '', cleaned_tweet["text"]).strip()
+    cleaned_tweet["text"] = remove_urls_from_text(tweet["text"])
+    if "quoted_status" in cleaned_tweet:
+        cleaned_tweet["quoted_status"]["text"] = remove_urls_from_text(tweet["quoted_status"]["text"])
+    if "retweeted_status" in cleaned_tweet:
+        cleaned_tweet["retweeted_status"]["text"] = remove_urls_from_text(tweet["retweeted_status"]["text"])
     return cleaned_tweet
 
 if __name__ == '__main__':
