@@ -13,3 +13,4 @@
 **/*.csv
 **/neo4j
 **/data
+**/Notebooks/temp_results/
