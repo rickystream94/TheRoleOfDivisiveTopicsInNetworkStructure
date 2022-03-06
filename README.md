@@ -7,7 +7,7 @@ Folder and contents:
 - **Pictures**: a set of folders, each one corresponding to different sets of notebooks, where all the output plots have been saved;
 - **lib/GetOldTweets-python**: contains the library used to crawl old tweets and the wrapper script I maintained to customize the features and create an ad-hoc solution that nicely suited my case;
 - **scripts**: A set of standalone scripts written in Python/Julia/Bash for miscellaneous/isolated tasks.
-- [Final Project Presentation](https://www.dropbox.com/s/r31ywg7s6n8an5i/MSc_Thesis_Presentation.pptx?dl=0)
+- [Final Project Presentation](https://1drv.ms/p/s!AmRSg6MuXWEP0wx1W6WNRhWZPW_Y?e=zD8lVT)
 
 Inside **lib/GetOldTweets-python**, two important files deserve further attention:
 - `twitter_object_dictionaries.json`: a JSON file indicating the Twitter API Platform objects (e.g. [Tweet Object](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object)) attributes I considered when downloading tweets. All the missing fields were not relevant for my analysis hence they have been filtered out before saving the tweets;
